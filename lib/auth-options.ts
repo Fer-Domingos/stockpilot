@@ -1,44 +1,46 @@
 import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
-import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import { prisma } from "./db";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
 export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(prisma),
+
   providers: [
+
     CredentialsProvider({
       id: "credentials",
       name: "Credentials",
+
       credentials: {
         email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" }
+        password: { label: "Password", type: "password" },
       },
+
       async authorize(credentials) {
+
         if (!credentials?.email || !credentials?.password) {
           return null;
         }
 
         const user = await prisma.user.findUnique({
-          where: { email: credentials.email }
+          where: { email: credentials.email },
         });
 
         if (!user || !user.password) {
           return null;
         }
 
-        // Check if user is active
         if (!user.isActive) {
-          throw new Error("Account not activated. Please check your email for the invite link.");
+          return null;
         }
 
-        const isValidPassword = await bcrypt.compare(
+        const valid = await bcrypt.compare(
           credentials.password,
           user.password
         );
 
-        if (!isValidPassword) {
+        if (!valid) {
           return null;
         }
 
@@ -46,70 +48,146 @@ export const authOptions: NextAuthOptions = {
           id: user.id,
           email: user.email,
           name: user.name,
-          role: user.role
+          role: user.role,
         };
-      }
+
+      },
     }),
+
+
+
     CredentialsProvider({
       id: "magic-link",
       name: "Magic Link",
+
       credentials: {
-        token: { label: "Token", type: "text" }
+        token: { label: "Token", type: "text" },
       },
+
       async authorize(credentials) {
-        if (!credentials?.token) {
-          return null;
-        }
+
+        if (!credentials?.token) return null;
 
         try {
-          // Verify JWT token
+
           const decoded = jwt.verify(
             credentials.token,
             process.env.NEXTAUTH_SECRET!
-          ) as { userId: string; email: string; role: string };
+          ) as any;
 
           const user = await prisma.user.findUnique({
-            where: { id: decoded.userId }
+            where: { id: decoded.userId },
           });
 
-          if (!user || !user.isActive) {
-            return null;
-          }
+          if (!user) return null;
 
           return {
             id: user.id,
             email: user.email,
             name: user.name,
-            role: user.role
+            role: user.role,
           };
-        } catch (error) {
-          console.error("Magic link verification failed:", error);
+
+        } catch {
+
           return null;
+
         }
-      }
-    })
+
+      },
+
+    }),
+
   ],
+
+
+
   session: {
-    strategy: "jwt"
+
+    strategy: "jwt",
+
+    maxAge: 30 * 24 * 60 * 60,
+
   },
-  callbacks: {
-    async jwt({ token, user }) {
-      if (user) {
-        token.role = user.role;
-        token.id = user.id;
-      }
-      return token;
+
+
+
+  debug: true,
+
+
+
+  useSecureCookies: false,
+
+
+
+  cookies: {
+
+    sessionToken: {
+
+      name: "next-auth.session-token",
+
+      options: {
+
+        httpOnly: true,
+
+        sameSite: "lax",
+
+        path: "/",
+
+        secure: false,
+
+      },
+
     },
-    async session({ session, token }) {
-      if (session?.user) {
-        (session.user as any).role = token.role;
-        (session.user as any).id = token.id;
+
+  },
+
+
+
+  callbacks: {
+
+    async jwt({ token, user }) {
+
+      if (user) {
+
+        token.role = (user as any).role;
+
+        token.id = (user as any).id;
+
       }
+
+      return token;
+
+    },
+
+
+
+    async session({ session, token }) {
+
+      if (session.user) {
+
+        (session.user as any).role = token.role;
+
+        (session.user as any).id = token.id;
+
+      }
+
       return session;
-    }
+
+    },
+
   },
+
+
+
   pages: {
-    signIn: "/login"
+
+    signIn: "/login",
+
   },
-  secret: process.env.NEXTAUTH_SECRET
+
+
+
+  secret: process.env.NEXTAUTH_SECRET,
+
 };
