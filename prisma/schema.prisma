@@ -1,10 +1,11 @@
 generator client {
-    provider = "prisma-client-js"
-    }
+  provider = "prisma-client-js"
+}
 
 datasource db {
-    provider = "postgresql"
-    url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_DATABASE_URL")
 }
 
 enum UserRole {
@@ -50,51 +51,50 @@ model User {
 }
 
 model Material {
-  id              String            @id @default(cuid())
-  name            String            @unique
-  category        MaterialCategory
-  unit            String            @default("sheets")
-  minStockLevel   Int               @default(0)
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
-  inventory       Inventory[]
-  transactions    Transaction[]
-  materialTotal   MaterialTotal?
+  id            String          @id @default(cuid())
+  name          String          @unique
+  category      MaterialCategory
+  unit          String          @default("sheets")
+  minStockLevel Int             @default(0)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  inventory     Inventory[]
+  transactions  Transaction[]
+  materialTotal MaterialTotal?
 }
 
-// Single source of truth for total stock per material (SaaS-standard ledger pattern)
 model MaterialTotal {
-  id          String    @id @default(cuid())
-  materialId  String    @unique
-  totalQty    Int       @default(0)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  material    Material  @relation(fields: [materialId], references: [id], onDelete: Cascade)
+  id         String   @id @default(cuid())
+  materialId String   @unique
+  totalQty   Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  material   Material @relation(fields: [materialId], references: [id], onDelete: Cascade)
 
   @@index([materialId])
 }
 
 model Location {
-  id                    String        @id @default(cuid())
-  name                  String        @unique
-  type                  LocationType
-  isActive              Boolean       @default(true)
-  createdAt             DateTime      @default(now())
-  updatedAt             DateTime      @updatedAt
-  inventory             Inventory[]
-  transactionsFrom      Transaction[] @relation("FromLocation")
-  transactionsTo        Transaction[] @relation("ToLocation")
+  id               String        @id @default(cuid())
+  name             String        @unique
+  type             LocationType
+  isActive         Boolean       @default(true)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  inventory        Inventory[]
+  transactionsFrom Transaction[] @relation("FromLocation")
+  transactionsTo   Transaction[] @relation("ToLocation")
 }
 
 model Inventory {
-  id          String    @id @default(cuid())
-  materialId  String
-  locationId  String
-  quantity    Int       @default(0)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  material    Material  @relation(fields: [materialId], references: [id], onDelete: Cascade)
-  location    Location  @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  id         String   @id @default(cuid())
+  materialId String
+  locationId String
+  quantity   Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  material   Material @relation(fields: [materialId], references: [id], onDelete: Cascade)
+  location   Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
 
   @@unique([materialId, locationId])
   @@index([locationId])
@@ -102,28 +102,28 @@ model Inventory {
 }
 
 model Transaction {
-  id                    String            @id @default(cuid())
+  id                    String          @id @default(cuid())
   type                  TransactionType
   materialId            String
   quantity              Int
-  unit                  String            @default("sheets")
+  unit                  String          @default("sheets")
   fromLocationId        String?
   toLocationId          String?
   userId                String
-  date                  DateTime          @default(now())
+  date                  DateTime        @default(now())
   vendor                String?
   poNumber              String?
   invoiceNumber         String?
   notes                 String?
   adjustmentReason      String?
   originalTransactionId String?
-  createdAt             DateTime          @default(now())
-  material              Material          @relation(fields: [materialId], references: [id], onDelete: Cascade)
-  user                  User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  fromLocation          Location?         @relation("FromLocation", fields: [fromLocationId], references: [id], onDelete: SetNull)
-  toLocation            Location?         @relation("ToLocation", fields: [toLocationId], references: [id], onDelete: SetNull)
-  originalTransaction   Transaction?      @relation("TransactionAdjustments", fields: [originalTransactionId], references: [id], onDelete: SetNull)
-  adjustments           Transaction[]     @relation("TransactionAdjustments")
+  createdAt             DateTime        @default(now())
+  material              Material        @relation(fields: [materialId], references: [id], onDelete: Cascade)
+  user                  User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fromLocation          Location?       @relation("FromLocation", fields: [fromLocationId], references: [id], onDelete: SetNull)
+  toLocation            Location?       @relation("ToLocation", fields: [toLocationId], references: [id], onDelete: SetNull)
+  originalTransaction   Transaction?    @relation("TransactionAdjustments", fields: [originalTransactionId], references: [id], onDelete: SetNull)
+  adjustments           Transaction[]   @relation("TransactionAdjustments")
   invoicePhotos         InvoicePhoto[]
 
   @@index([materialId])
@@ -134,12 +134,12 @@ model Transaction {
 }
 
 model InvoicePhoto {
-  id                  String      @id @default(cuid())
-  transactionId       String
-  cloud_storage_path  String
-  isPublic            Boolean     @default(false)
-  createdAt           DateTime    @default(now())
-  transaction         Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  id                 String      @id @default(cuid())
+  transactionId      String
+  cloud_storage_path String
+  isPublic           Boolean     @default(false)
+  createdAt          DateTime    @default(now())
+  transaction        Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
 
   @@index([transactionId])
 }
